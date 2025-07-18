@@ -1,21 +1,29 @@
-//  Copyright (c) 2017-present, arana-db Community.  All rights reserved.
+// Copyright (c) 2017-present, arana-db Community.  All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-//  Licensed under the Apache License, Version 2.0 (the "License");
-//  you may not use this file except in compliance with the License.
-//  You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-//  Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-//  See the License for the specific language governing permissions and
-//  limitations under the License.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-use crate::handle::process_connection;
+//! Unix-domain socket support for Kiwi-rs.
+//!
+//! This module is **only** compiled on Unix platforms. Windows builds will
+//! simply skip this file, ensuring cross-platform compilation without the
+//! need for extra Cargo features.
+
+#![cfg(unix)]
+#![cfg_attr(not(unix), allow(unused_imports, dead_code))]
+
 use crate::{Client, ServerTrait, StreamTrait};
+use crate::handle;
 use async_trait::async_trait;
-use log::info;
+use log::{error, info};
 use std::error::Error;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{UnixListener, UnixStream};
@@ -65,7 +73,11 @@ impl ServerTrait for UnixServer {
 
             let mut client = Client::new(Box::new(s));
 
-            tokio::spawn(async move { process_connection(&mut client).await.unwrap() });
+            tokio::spawn(async move { 
+                if let Err(e) = handle::process_connection(&mut client).await {
+                    error!("handle connection error: {e}");
+                }
+            });
         }
     }
 }
